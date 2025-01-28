@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Konverter Teks ke Suara</title>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .input-text {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .voice-select {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            min-width: 200px;
+        }
+        .settings {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        .setting-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .convert-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .convert-btn:hover {
+            background-color: #45a049;
+        }
+        .convert-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #333;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .speaking {
+            text-decoration: underline dotted;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Konverter Teks ke Suara</h1>
+        
+        <textarea class="input-text" placeholder="Masukkan teks yang ingin dikonversi ke suara..."></textarea>
+        
+        <div class="controls">
+            <select class="voice-select">
+                <option value="">Memuat suara...</option>
+            </select>
+            
+            <div class="settings">
+                <div class="setting-group">
+                    <label for="rate">Kecepatan:</label>
+                    <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+                    <span class="rate-value">1</span>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="pitch">Nada:</label>
+                    <input type="range" id="pitch" min="0.5" max="2" value="1" step="0.1">
+                    <span class="pitch-value">1</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="convert-btn">Buat Suara</button>
+        <div class="result"></div>
+    </div>
+
+    <script>
+        // Inisialisasi speech synthesis
+        const synth = window.speechSynthesis;
+        let speaking = false;
+
+        // Mengambil elemen DOM
+        const button = document.querySelector('.convert-btn');
+        const input = document.querySelector('.input-text');
+        const result = document.querySelector('.result');
+        const voiceSelect = document.querySelector('.voice-select');
+        const rateInput = document.getElementById('rate');
+        const pitchInput = document.getElementById('pitch');
+        const rateValue = document.querySelector('.rate-value');
+        const pitchValue = document.querySelector('.pitch-value');
+
+        // Fungsi untuk memperbarui daftar suara
+        function updateVoiceList() {
+            const voices = synth.getVoices();
+            voiceSelect.innerHTML = voices
+                .map(voice => `<option value="${voice.name}" 
+                    ${voice.lang.startsWith('id') ? 'selected' : ''}>
+                    ${voice.name} (${voice.lang})
+                </option>`)
+                .join('');
+        }
+
+        // Mendengarkan perubahan daftar suara
+        synth.addEventListener('voiceschanged', updateVoiceList);
+
+        // Update nilai tampilan untuk rate dan pitch
+        rateInput.addEventListener('input', () => {
+            rateValue.textContent = rateInput.value;
+        });
+
+        pitchInput.addEventListener('input', () => {
+            pitchValue.textContent = pitchInput.value;
+        });
+
+        // Fungsi untuk memperbarui pesan hasil
+        function updateResult(message, isError = false) {
+            result.textContent = message;
+            result.classList.remove('error', 'success');
+            result.classList.add(isError ? 'error' : 'success');
+        }
+
+        // Fungsi untuk mengatur suara
+        function speakText() {
+            // Memeriksa apakah speech synthesis didukung
+            if (!synth) {
+                updateResult('Maaf, browser Anda tidak mendukung fitur text-to-speech.', true);
+                return;
+            }
+
+            // Mengambil teks input
+            const text = input.value.trim();
+            
+            if (!text) {
+                updateResult('Silakan masukkan teks yang ingin diubah menjadi suara.', true);
+                return;
+            }
+
+            // Membatalkan suara yang sedang berjalan
+            synth.cancel();
+
+            // Membuat utterance baru
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            // Mengatur suara yang dipilih
+            const voices = synth.getVoices();
+            const selectedVoice = voices.find(voice => voice.name === voiceSelect.value);
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+
+            // Mengatur parameter suara
+            utterance.rate = parseFloat(rateInput.value);
+            utterance.pitch = parseFloat(pitchInput.value);
+
+            // Menangani event
+            utterance.onstart = () => {
+                speaking = true;
+                button.disabled = true;
+                updateResult('Sedang berbicara...');
+            };
+
+            utterance.onend = () => {
+                speaking = false;
+                button.disabled = false;
+                updateResult('Selesai berbicara.');
+            };
+
+            utterance.onerror = (event) => {
+                speaking = false;
+                button.disabled = false;
+                updateResult(`Terjadi kesalahan: ${event.error}`, true);
+            };
+
+            // Memulai berbicara
+            synth.speak(utterance);
+        }
+
+        // Menambahkan event listener untuk tombol dan textarea
+        button.addEventListener('click', speakText);
+        
+        // Menambahkan event listener untuk tombol Enter
+        input.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Mencegah line break
+                speakText();
+            }
+        });
+
+        // Menangani ketika halaman ditutup
+        window.addEventListener('beforeunload', () => {
+            if (synth) {
+                synth.cancel();
+            }
+        });
+
+        // Inisialisasi daftar suara
+        updateVoiceList();
+    </script>
+</body>
+</html>
