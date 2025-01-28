@@ -2,7 +2,7 @@
 
 Simple and efficient text-to-speech converter built with HTML, CSS, and JavaScript. This application allows users to convert text into speech with customizable voice settings.
 
-![Text to Voice Converter](https://raw.githubusercontent.com/dypras666/texttovoice/main/screenshot.png)
+![Text to Voice Converter](https://raw.githubusercontent.com/dypras666/texttovoice/refs/heads/main/screenshoot.png)
 
 ## Features
 
